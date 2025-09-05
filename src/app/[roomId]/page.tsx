@@ -28,6 +28,7 @@ export default function VotingPage() {
   const [suggestions, setSuggestions] = useState<MascotSuggestion[]>([])
   const [voteCounts, setVoteCounts] = useState<Record<string, number>>({})
   const [userSession] = useState(() => generateUserSession())
+  const [userName, setUserName] = useState('')
   const [newSuggestion, setNewSuggestion] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
@@ -124,7 +125,8 @@ export default function VotingPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           suggestionId,
-          userSession
+          userSession,
+          userName: userName || 'Anonymous'
         })
       })
 
@@ -328,12 +330,36 @@ export default function VotingPage() {
           </div>
         </motion.div>
 
+        {/* User Name Input */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.2 }}
+          className="bg-white/10 backdrop-blur-sm rounded-2xl p-6 mb-8 border border-white/20"
+        >
+          <h2 className="text-xl font-semibold text-white mb-4">Your Name (for voting)</h2>
+          <div className="flex gap-4">
+            <input
+              type="text"
+              value={userName}
+              onChange={(e) => setUserName(e.target.value)}
+              placeholder="Enter your name..."
+              className="flex-1 px-4 py-3 bg-white/20 border border-white/30 rounded-lg text-white placeholder-blue-200 focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:border-transparent"
+              maxLength={30}
+            />
+            <div className="text-blue-200 text-sm flex items-center">
+              <Users className="w-4 h-4 mr-1" />
+              Required for voting
+            </div>
+          </div>
+        </motion.div>
+
         {/* Add Suggestion Form */}
         {!room.is_locked && (
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 }}
+            transition={{ delay: 0.3 }}
             className="bg-white/10 backdrop-blur-sm rounded-2xl p-6 mb-8 border border-white/20"
           >
             <h2 className="text-xl font-semibold text-white mb-4">Add Mascot Suggestion</h2>
@@ -362,7 +388,7 @@ export default function VotingPage() {
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3 }}
+          transition={{ delay: 0.4 }}
           className="space-y-4"
         >
           <h2 className="text-2xl font-bold text-white mb-6">Mascot Suggestions</h2>

@@ -6,20 +6,24 @@ export async function POST(
   { params }: { params: Promise<{ roomId: string }> }
 ) {
   try {
-    const { suggestionId, userSession } = await request.json()
+    const { suggestionId, userSession, userName } = await request.json()
     const { roomId } = await params
     
     if (!suggestionId || !userSession) {
       return NextResponse.json({ error: 'Suggestion ID and user session are required' }, { status: 400 })
     }
 
-    // Check if user already voted for this suggestion
+    // Get client IP address
+    const forwarded = request.headers.get('x-forwarded-for')
+    const ip = forwarded ? forwarded.split(',')[0] : request.headers.get('x-real-ip') || 'unknown'
+
+    // Check if user already voted for this suggestion (by IP + room + suggestion)
     const { data: existingVote, error: voteCheckError } = await supabase
       .from('votes')
       .select('id')
       .eq('room_id', roomId)
       .eq('suggestion_id', suggestionId)
-      .eq('user_session', userSession)
+      .eq('user_ip', ip)
       .single()
 
     if (voteCheckError && voteCheckError.code !== 'PGRST116') {
@@ -28,7 +32,7 @@ export async function POST(
     }
 
     if (existingVote) {
-      return NextResponse.json({ error: 'You have already voted for this suggestion' }, { status: 409 })
+      return NextResponse.json({ error: 'You have already voted for this suggestion from this device/network' }, { status: 409 })
     }
 
     // Create vote
@@ -37,7 +41,9 @@ export async function POST(
       .insert({
         room_id: roomId,
         suggestion_id: suggestionId,
-        user_session: userSession
+        user_session: userSession,
+        user_ip: ip,
+        user_name: userName || 'Anonymous'
       })
       .select()
       .single()
@@ -66,13 +72,17 @@ export async function DELETE(
       return NextResponse.json({ error: 'Suggestion ID and user session are required' }, { status: 400 })
     }
 
-    // Remove vote
+    // Get client IP address
+    const forwarded = request.headers.get('x-forwarded-for')
+    const ip = forwarded ? forwarded.split(',')[0] : request.headers.get('x-real-ip') || 'unknown'
+
+    // Remove vote (by IP + room + suggestion)
     const { error } = await supabase
       .from('votes')
       .delete()
       .eq('room_id', roomId)
       .eq('suggestion_id', suggestionId)
-      .eq('user_session', userSession)
+      .eq('user_ip', ip)
 
     if (error) {
       console.error('Error removing vote:', error)
