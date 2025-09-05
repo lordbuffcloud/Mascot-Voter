@@ -108,7 +108,7 @@ export default function VotingPage() {
       }
 
       setNewSuggestion('')
-      await fetchSuggestions()
+      await loadData()
     } catch (err) {
       console.error('Error adding suggestion:', err)
       alert('Failed to add suggestion')
@@ -147,7 +147,7 @@ export default function VotingPage() {
         }
       }
 
-      await fetchVoteCounts()
+      await loadData()
     } catch (err) {
       console.error('Error voting:', err)
       alert('Failed to vote')
