@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { supabase } from '@/lib/supabase'
+import { createClient } from '@supabase/supabase-js'
 
 export async function POST(request: NextRequest) {
   try {
@@ -8,6 +8,18 @@ export async function POST(request: NextRequest) {
     if (!roomId) {
       return NextResponse.json({ error: 'Room ID is required' }, { status: 400 })
     }
+
+    console.log('Creating room with ID:', roomId)
+
+    // Create Supabase client directly in the API route
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
+    const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+    
+    if (!supabaseUrl || !supabaseKey) {
+      throw new Error('Missing Supabase environment variables')
+    }
+
+    const supabase = createClient(supabaseUrl, supabaseKey)
 
     // Create room in Supabase
     const { data, error } = await supabase
@@ -21,14 +33,22 @@ export async function POST(request: NextRequest) {
       .single()
 
     if (error) {
-      console.error('Error creating room:', error)
-      return NextResponse.json({ error: 'Failed to create room' }, { status: 500 })
+      console.error('Supabase error creating room:', error)
+      return NextResponse.json({ 
+        error: 'Failed to create room', 
+        details: error.message,
+        code: error.code 
+      }, { status: 500 })
     }
 
+    console.log('Room created successfully:', data)
     return NextResponse.json({ data })
   } catch (error) {
     console.error('Error in POST /api/rooms:', error)
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+    return NextResponse.json({ 
+      error: 'Internal server error', 
+      details: error instanceof Error ? error.message : 'Unknown error'
+    }, { status: 500 })
   }
 }
 
