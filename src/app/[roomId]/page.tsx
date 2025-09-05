@@ -13,7 +13,8 @@ import {
   Plane, 
   Star,
   CheckCircle,
-  XCircle
+  XCircle,
+  RefreshCw
 } from 'lucide-react'
 import { generateUserSession } from '@/lib/utils'
 import { Room, MascotSuggestion } from '@/types'
@@ -31,67 +32,56 @@ export default function VotingPage() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-
-  const fetchRoom = useCallback(async () => {
-    try {
-      const response = await fetch(`/api/rooms?roomId=${roomId}`)
-      const data = await response.json()
-      
-      if (data.error) {
-        setError(data.error)
-        return
-      }
-      
-      setRoom(data.data)
-    } catch (err) {
-      console.error('Error fetching room:', err)
-      setError('Failed to load room')
-    }
-  }, [roomId])
-
-  const fetchSuggestions = useCallback(async () => {
-    try {
-      const response = await fetch(`/api/rooms/${roomId}/suggestions`)
-      const data = await response.json()
-      
-      if (data.error) {
-        console.error('Error fetching suggestions:', data.error)
-        return
-      }
-      
-      setSuggestions(data.data || [])
-    } catch (err) {
-      console.error('Error fetching suggestions:', err)
-    }
-  }, [roomId])
-
-  const fetchVoteCounts = useCallback(async () => {
-    try {
-      const response = await fetch(`/api/rooms/${roomId}/votes`)
-      const data = await response.json()
-      
-      if (data.error) {
-        console.error('Error fetching vote counts:', data.error)
-        return
-      }
-      
-      setVoteCounts(data.data || {})
-    } catch (err) {
-      console.error('Error fetching vote counts:', err)
-    }
-  }, [roomId])
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null)
 
   const loadData = useCallback(async () => {
     setIsLoading(true)
-    await Promise.all([fetchRoom(), fetchSuggestions(), fetchVoteCounts()])
+    
+    try {
+      // Fetch all data in parallel
+      const [roomResponse, suggestionsResponse, votesResponse] = await Promise.all([
+        fetch(`/api/rooms?roomId=${roomId}`),
+        fetch(`/api/rooms/${roomId}/suggestions`),
+        fetch(`/api/rooms/${roomId}/votes`)
+      ])
+
+      // Process room data
+      const roomData = await roomResponse.json()
+      if (roomData.error) {
+        setError(roomData.error)
+      } else {
+        setRoom(roomData.data)
+      }
+
+      // Process suggestions data
+      const suggestionsData = await suggestionsResponse.json()
+      if (suggestionsData.error) {
+        console.error('Error fetching suggestions:', suggestionsData.error)
+      } else {
+        setSuggestions(suggestionsData.data || [])
+      }
+
+      // Process votes data
+      const votesData = await votesResponse.json()
+      if (votesData.error) {
+        console.error('Error fetching vote counts:', votesData.error)
+      } else {
+        setVoteCounts(votesData.data || {})
+      }
+    } catch (err) {
+      console.error('Error loading data:', err)
+      setError('Failed to load data')
+    }
+    
     setIsLoading(false)
-  }, [fetchRoom, fetchSuggestions, fetchVoteCounts])
+    setLastUpdated(new Date())
+  }, [roomId])
 
   useEffect(() => {
     loadData()
     
-    // Poll for updates every 2 seconds
-    const interval = setInterval(loadData, 2000)
+    // Poll for updates every 10 seconds (less aggressive)
+    const interval = setInterval(loadData, 10000)
     return () => clearInterval(interval)
   }, [loadData])
 
@@ -282,6 +272,12 @@ export default function VotingPage() {
               <CheckCircle className="w-4 h-4 mr-1" />
               {totalVotes} total votes
             </div>
+            {lastUpdated && (
+              <div className="flex items-center text-sm">
+                <RefreshCw className="w-3 h-3 mr-1" />
+                Updated: {lastUpdated.toLocaleTimeString()}
+              </div>
+            )}
           </div>
         </motion.div>
 
@@ -312,6 +308,14 @@ export default function VotingPage() {
               >
                 <RotateCcw className="w-4 h-4 mr-2" />
                 Reset All
+              </button>
+              
+              <button
+                onClick={loadData}
+                className="flex items-center px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg font-semibold transition-all"
+              >
+                <RefreshCw className="w-4 h-4 mr-2" />
+                Refresh
               </button>
             </div>
 

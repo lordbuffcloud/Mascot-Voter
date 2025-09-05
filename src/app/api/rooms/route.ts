@@ -61,6 +61,16 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Room ID is required' }, { status: 400 })
     }
 
+    // Create Supabase client directly in the API route
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
+    const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+    
+    if (!supabaseUrl || !supabaseKey) {
+      throw new Error('Missing Supabase environment variables')
+    }
+
+    const supabase = createClient(supabaseUrl, supabaseKey)
+
     // Get room from Supabase
     const { data, error } = await supabase
       .from('rooms')
